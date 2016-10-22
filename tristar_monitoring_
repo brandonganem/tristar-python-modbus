@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Modified for JSON output from
+# https://github.com/brocktice/tristar-python-modbus
+
 # Based on Morningstar documentation here
 # http://www.morningstarcorp.com/wp-content/uploads/2014/02/TSMPPT.APP_.Modbus.EN_.10.2.pdf
 # and heavily modified version of the script here
@@ -8,6 +11,8 @@
 import sys
 import re
 import time
+import json
+from datetime import datetime
 counter = 0
 
 script = sys.argv[0]
@@ -61,7 +66,6 @@ state = ['Start', 'Night Check', 'Disconnected', 'Night', 'Fault!', 'MPPT', 'Abs
 
 # read registers. Start at 0 for convenience
 rr = client.read_holding_registers(0,80,unit=1)
-
 # for all indexes, subtract 1 from what's in the manual
 V_PU_hi = rr.registers[0]
 V_PU_lo = rr.registers[1]
@@ -92,23 +96,30 @@ minTb_daily = rr.registers[71]
 maxTb_daily = rr.registers[72]
 dipswitches = bin(rr.registers[48])[::-1][:-2].zfill(8)
 led_state = rr.registers
-print "vBattTerm.value %.2f" % battsV
-print "vBattSense.value %.2f" % battsSensedV
-print "aBatt.value %.2f" % battsI
-#print "battery watts:   %.2f" % (battsV*battsI)
-print "vPanel.value %.2f" % arrayV
-print "aPanel.value %.2f" % arrayI
-#print "array watts:     %.2f" % (arrayV*arrayI)
-print "hsTemp.value %.2f" % hsTemp
-print "battTemp.value %.2f" % rtsTemp
-#print "state:           %s" % state[statenum]
-#print "out power:       %0.2f" % outPower
-#print "in Power:        %0.2f" % inPower
-#print "min Vb daily:    %0.2f" % minVb_daily
-#print "max Vb daily:    %0.2f" % maxVb_daily
-#print "min Tb daily:    %0.2f" % minTb_daily
-#print "max Tb daily:    %0.2f" % maxTb_daily
-#print "dipswitches:     %s" % dipswitches
-#print "dipswitches:     12345678"
-#print ""
+
+# Lets make an output dict
+output = {}
+output['ts'] = datetime.now().strftime("%s")
+output['vBattTerm.value'] = "%.6f" % battsV
+output['vBattTerm.value'] = "%.6f" % battsV
+output['vBattSense.value'] = "%.6f" % battsSensedV
+output['aBatt.value'] = "%.6f" % battsI
+output['battery_watts'] = "%.6f" % (battsV*battsI)
+output['vPanel.value'] = "%.6f" % arrayV
+output['aPanel.value'] = "%.6f" % arrayI
+output['array.watts'] = "%.6f" % (arrayV*arrayI)
+output['hsTemp.value'] = "%.6f" % hsTemp
+output['battTemp.value'] = "%.6f" % rtsTemp
+output['state'] = "%s" % state[statenum]
+output['out_power'] = "%0.6f" % outPower
+output['in_Power'] = "%0.6f" % inPower
+output['min_Vb_daily'] = "%0.6f" % minVb_daily
+output['max_Vb_daily'] = "%0.6f" % maxVb_daily
+output['min_Tb_daily'] = "%0.6f" % minTb_daily
+output['max_Tb_daily'] = "%0.6f" % maxTb_daily
+output['dipswitches'] = "%s" % dipswitches
+
+# print the JSON to stdout
+print json.dumps(output)
+
 client.close()
