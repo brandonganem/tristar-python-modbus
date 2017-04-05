@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-# Modified for JSON output from
-# https://github.com/brocktice/tristar-python-modbus
-
 # Based on Morningstar documentation here
 # http://www.morningstarcorp.com/wp-content/uploads/2014/02/TSMPPT.APP_.Modbus.EN_.10.2.pdf
 # and heavily modified version of the script here
@@ -13,9 +10,20 @@ import re
 import time
 import json
 from datetime import datetime
+from binary16 import binary16
 counter = 0
 
+def twos_comp(val, bits):
+    """compute the 2's compliment of int value val"""
+    try:
+        if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+            val = val - (1 << bits)        # compute negative value
+    except Exception, e:
+        pass
+    return val  
+
 script = sys.argv[0]
+#host = "192.168.1.253"
 host = re.sub(r".*tristar_monitoring_",'',script)
 
 if len(sys.argv) == 2:
@@ -97,29 +105,46 @@ maxTb_daily = rr.registers[72]
 dipswitches = bin(rr.registers[48])[::-1][:-2].zfill(8)
 led_state = rr.registers
 
-# Lets make an output dict
 output = {}
 output['ts'] = datetime.now().strftime("%s")
-output['vBattTerm.value'] = "%.6f" % battsV
-output['vBattTerm.value'] = "%.6f" % battsV
-output['vBattSense.value'] = "%.6f" % battsSensedV
-output['aBatt.value'] = "%.6f" % battsI
-output['battery_watts'] = "%.6f" % (battsV*battsI)
-output['vPanel.value'] = "%.6f" % arrayV
-output['aPanel.value'] = "%.6f" % arrayI
-output['array.watts'] = "%.6f" % (arrayV*arrayI)
-output['hsTemp.value'] = "%.6f" % hsTemp
-output['battTemp.value'] = "%.6f" % rtsTemp
+output['vBattTerm.value'] = "%.6f" % twos_comp(battsV, 16)
+output['vBattTerm.value'] = "%.6f" % twos_comp(battsV, 16)
+output['vBattSense.value'] = "%.6f" % twos_comp(battsSensedV, 16)
+output['aBatt.value'] = "%.6f" % twos_comp(battsI, 16)
+output['battery_watts'] = "%.6f" % twos_comp((battsV*battsI), 16)
+output['vPanel.value'] = "%.6f" % twos_comp(arrayV, 16)
+output['aPanel.value'] = "%.6f" % twos_comp(arrayI, 16)
+output['array.watts'] = "%.6f" % twos_comp((arrayV*arrayI), 16)
+output['hsTemp.value'] = "%.6f" % twos_comp(hsTemp, 16)
+output['battTemp.value'] = "%.6f" % twos_comp(rtsTemp, 16)
 output['state'] = "%s" % state[statenum]
-output['out_power'] = "%0.6f" % outPower
-output['in_Power'] = "%0.6f" % inPower
-output['min_Vb_daily'] = "%0.6f" % minVb_daily
-output['max_Vb_daily'] = "%0.6f" % maxVb_daily
-output['min_Tb_daily'] = "%0.6f" % minTb_daily
-output['max_Tb_daily'] = "%0.6f" % maxTb_daily
+output['out_power'] = "%0.6f" % twos_comp(outPower, 16)
+output['in_Power'] = "%0.6f" % twos_comp(inPower, 16)
+output['min_Vb_daily'] = "%0.6f" % twos_comp(minVb_daily, 16)
+output['max_Vb_daily'] = "%0.6f" % twos_comp(maxVb_daily, 16)
+output['min_Tb_daily'] = "%0.6f" % twos_comp(minTb_daily, 16)
+output['max_Tb_daily'] = "%0.6f" % twos_comp(maxTb_daily, 16)
 output['dipswitches'] = "%s" % dipswitches
 
-# print the JSON to stdout
 print json.dumps(output)
 
+#print "vBattTerm.value %.2f" % battsV
+#print "vBattSense.value %.2f" % battsSensedV
+#print "aBatt.value %.2f" % battsI
+#print "battery_watts:   %.2f" % (battsV*battsI)
+#print "vPanel.value %.2f" % arrayV
+#print "aPanel.value %.2f" % arrayI
+#print "array watts:     %.2f" % (arrayV*arrayI)
+#print "hsTemp.value %.2f" % hsTemp
+#print "battTemp.value %.2f" % rtsTemp
+#print "state:           %s" % state[statenum]
+#print "out power:       %0.2f" % outPower
+#print "in Power:        %0.2f" % inPower
+#print "min Vb daily:    %0.2f" % minVb_daily
+#print "max Vb daily:    %0.2f" % maxVb_daily
+#print "min Tb daily:    %0.2f" % minTb_daily
+#print "max Tb daily:    %0.2f" % maxTb_daily
+#print "dipswitches:     %s" % dipswitches
+##print "dipswitches:     12345678"
+##print ""
 client.close()
